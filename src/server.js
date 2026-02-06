@@ -514,7 +514,7 @@ app.get('/api/camps', async (req, res) => {
 // NETTOYAGE DES SESSIONS EXPIRÉES
 // ──────────────────────────────────────────────
 
-setInterval(() => {
+function cleanExpiredSessions() {
   const now = Date.now();
   const maxAge = 2 * 60 * 60 * 1000; // 2 heures
   for (const [id, session] of sessions) {
@@ -522,17 +522,19 @@ setInterval(() => {
       sessions.delete(id);
     }
   }
-}, 30 * 60 * 1000); // Vérifier chaque 30 minutes
+}
 
 // ──────────────────────────────────────────────
 // DÉMARRAGE
 // ──────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`🏀 Hope Basketball Agent — Port ${PORT}`);
-  console.log(`   API: http://localhost:${PORT}/api/chat`);
-  console.log(`   Health: http://localhost:${PORT}/api/health`);
-  console.log(`   Webhook: http://localhost:${PORT}/webhook/stripe`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🏀 Hope Basketball Agent — Port ${PORT}`);
+    console.log(`   API: http://localhost:${PORT}/api/chat`);
+    console.log(`   Health: http://localhost:${PORT}/api/health`);
+    console.log(`   Webhook: http://localhost:${PORT}/webhook/stripe`);
+  });
+}
 
 export default app;
