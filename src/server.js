@@ -14,6 +14,7 @@ import { WooCommerceService } from './services/woocommerce.js';
 import { StripeService } from './services/stripe.js';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,9 +52,15 @@ app.use((req, res, next) => {
   }
 });
 
-// Servir le widget statique
+// Servir le widget
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-app.use('/widget', express.static(path.join(__dirname, '../widget')));
+app.get('/widget/chat-widget.js', (req, res) => {
+  const widgetPath = path.join(__dirname, '../widget/chat-widget.js');
+  const content = fs.readFileSync(widgetPath, 'utf-8');
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.send(content);
+});
 
 // ──────────────────────────────────────────────
 // SYSTEM PROMPT — Personnalité de l'agent
