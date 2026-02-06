@@ -11,7 +11,7 @@
 
   const CONFIG = {
     // ⚠️ Modifier cette URL après le déploiement du backend
-    API_URL: 'https://hope-agent.vercel.app',
+    API_URL: 'https://hope-basketball.vercel.app',
     BRAND: {
       primary: '#00a8e8',     // Bleu Hope Basketball
       primaryDark: '#0088c2',
