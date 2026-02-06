@@ -6,7 +6,8 @@
  * Stack: WordPress + WooCommerce + Stripe (sans Amelia)
  */
 
-import WooCommerceRestApi from '@woocommerce/woocommerce-rest-api';
+import WooCommerceRestApiPkg from '@woocommerce/woocommerce-rest-api';
+const WooCommerceRestApi = WooCommerceRestApiPkg.default || WooCommerceRestApiPkg;
 
 export class WooCommerceService {
   constructor() {
