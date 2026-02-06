@@ -1,0 +1,24 @@
+{
+  "name": "hope-basketball-agent",
+  "version": "2.0.0",
+  "description": "Agent conversationnel IA pour Hope Basketball Québec — Inscription aux camps, paiements et support",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@woocommerce/woocommerce-rest-api": "^1.0.1",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "stripe": "^17.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "David Courchesne — Kubos Solutions Informatiques",
+  "license": "UNLICENSED",
+  "private": true
+}
