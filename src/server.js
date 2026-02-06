@@ -12,6 +12,8 @@ import cors from 'cors';
 import Anthropic from '@anthropic-ai/sdk';
 import { WooCommerceService } from './services/woocommerce.js';
 import { StripeService } from './services/stripe.js';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,6 +50,10 @@ app.use((req, res, next) => {
     express.json()(req, res, next);
   }
 });
+
+// Servir le widget statique
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+app.use('/widget', express.static(path.join(__dirname, '../widget')));
 
 // ──────────────────────────────────────────────
 // SYSTEM PROMPT — Personnalité de l'agent
