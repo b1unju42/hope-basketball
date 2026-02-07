@@ -66,7 +66,7 @@ export class WooCommerceService {
       };
     } catch (error) {
       console.error('[WooCommerce] Erreur getCamps:', error.message);
-      return { success: false, error: error.message, camps: [] };
+      return { success: false, error: 'Impossible de récupérer les camps pour le moment.', camps: [] };
     }
   }
 
@@ -84,7 +84,7 @@ export class WooCommerceService {
       return { success: true, camp: this._formatCamp(product) };
     } catch (error) {
       console.error('[WooCommerce] Erreur getCampById:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Service temporairement indisponible. Veuillez réessayer.' };
     }
   }
 
@@ -115,7 +115,7 @@ export class WooCommerceService {
       };
     } catch (error) {
       console.error('[WooCommerce] Erreur checkAvailability:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Service temporairement indisponible. Veuillez réessayer.' };
     }
   }
 
@@ -194,7 +194,7 @@ export class WooCommerceService {
       };
     } catch (error) {
       console.error('[WooCommerce] Erreur createOrder:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Service temporairement indisponible. Veuillez réessayer.' };
     }
   }
 
@@ -232,7 +232,7 @@ export class WooCommerceService {
       };
     } catch (error) {
       console.error('[WooCommerce] Erreur getOrderStatus:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Service temporairement indisponible. Veuillez réessayer.' };
     }
   }
 
@@ -263,7 +263,7 @@ export class WooCommerceService {
       };
     } catch (error) {
       console.error('[WooCommerce] Erreur getOrdersByEmail:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Service temporairement indisponible. Veuillez réessayer.' };
     }
   }
 
@@ -299,7 +299,7 @@ export class WooCommerceService {
       return { success: true, products: merch, total: merch.length };
     } catch (error) {
       console.error('[WooCommerce] Erreur getMerchProducts:', error.message);
-      return { success: false, error: error.message, products: [] };
+      return { success: false, error: 'Impossible de récupérer les produits pour le moment.', products: [] };
     }
   }
 
