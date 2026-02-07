@@ -89,7 +89,7 @@ export class StripeService {
       };
     } catch (error) {
       console.error('[Stripe] Erreur createCheckoutSession:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Erreur lors de la création du paiement. Veuillez réessayer.' };
     }
   }
 
@@ -146,7 +146,7 @@ export class StripeService {
       };
     } catch (error) {
       console.error('[Stripe] Erreur createPaymentLink:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Erreur lors de la création du lien de paiement. Veuillez réessayer.' };
     }
   }
 
@@ -170,7 +170,7 @@ export class StripeService {
       return { success: true, event };
     } catch (error) {
       console.error('[Stripe] Erreur webhook:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Signature webhook invalide.' };
     }
   }
 
@@ -286,7 +286,7 @@ export class StripeService {
       };
     } catch (error) {
       console.error('[Stripe] Erreur createRefund:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Erreur lors du remboursement. Veuillez contacter le support.' };
     }
   }
 
@@ -321,7 +321,7 @@ export class StripeService {
       };
     } catch (error) {
       console.error('[Stripe] Erreur getPaymentStatus:', error.message);
-      return { success: false, error: error.message };
+      return { success: false, error: 'Impossible de vérifier le statut du paiement.' };
     }
   }
 }

@@ -17,6 +17,24 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ──────────────────────────────────────────────
+// VALIDATION DES VARIABLES D'ENVIRONNEMENT
+// ──────────────────────────────────────────────
+
+const REQUIRED_ENV = ['ANTHROPIC_API_KEY'];
+const OPTIONAL_ENV = ['WOO_URL', 'WOO_CONSUMER_KEY', 'WOO_CONSUMER_SECRET', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'];
+
+const missingRequired = REQUIRED_ENV.filter(key => !process.env[key]);
+if (missingRequired.length > 0) {
+  console.error(`[FATAL] Variables d'environnement manquantes: ${missingRequired.join(', ')}`);
+  if (!process.env.VERCEL) process.exit(1);
+}
+
+const missingOptional = OPTIONAL_ENV.filter(key => !process.env[key]);
+if (missingOptional.length > 0) {
+  console.warn(`[WARN] Variables optionnelles manquantes: ${missingOptional.join(', ')}`);
+}
+
+// ──────────────────────────────────────────────
 // INITIALISATION DES SERVICES
 // ──────────────────────────────────────────────
 
@@ -26,6 +44,38 @@ const stripeService = new StripeService();
 
 // Sessions en mémoire (remplacer par Redis en production si nécessaire)
 const sessions = new Map();
+const MAX_SESSIONS = 500;
+const MAX_MESSAGES_PER_SESSION = 50;
+const SESSION_MAX_AGE = 2 * 60 * 60 * 1000; // 2 heures
+
+// ──────────────────────────────────────────────
+// RATE LIMITING (en mémoire)
+// ──────────────────────────────────────────────
+
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX = 10; // 10 requêtes par minute par IP
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
+    rateLimitMap.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+  entry.count++;
+  return entry.count <= RATE_LIMIT_MAX;
+}
+
+// Nettoyage périodique du rate limit
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitMap) {
+    if (now - entry.windowStart > RATE_LIMIT_WINDOW * 2) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
 
 // ──────────────────────────────────────────────
 // MIDDLEWARE
@@ -414,18 +464,50 @@ function getFAQ(topic) {
 
 app.post('/api/chat', async (req, res) => {
   try {
+    // Rate limiting
+    const clientIp = req.headers['x-forwarded-for'] || req.ip || 'unknown';
+    if (!checkRateLimit(clientIp)) {
+      return res.status(429).json({ error: 'Trop de requêtes. Veuillez patienter une minute.' });
+    }
+
     const { message, session_id } = req.body;
 
-    if (!message) {
+    // Validation du message
+    if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message requis' });
+    }
+    if (message.length > 5000) {
+      return res.status(400).json({ error: 'Message trop long (max 5000 caractères).' });
+    }
+
+    // Validation du session_id
+    if (session_id && (typeof session_id !== 'string' || session_id.length > 100)) {
+      return res.status(400).json({ error: 'Identifiant de session invalide.' });
+    }
+
+    // Nettoyage des sessions expirées si la map est trop grande
+    if (sessions.size >= MAX_SESSIONS) {
+      cleanExpiredSessions();
+    }
+    // Si encore trop de sessions, supprimer les plus anciennes
+    if (sessions.size >= MAX_SESSIONS) {
+      const oldest = [...sessions.entries()].sort((a, b) => a[1].created_at - b[1].created_at);
+      while (sessions.size >= MAX_SESSIONS && oldest.length) {
+        sessions.delete(oldest.shift()[0]);
+      }
     }
 
     // Gestion de session
-    const sessionId = session_id || `session_${Date.now()}`;
+    const sessionId = session_id || `session_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     if (!sessions.has(sessionId)) {
       sessions.set(sessionId, { messages: [], created_at: Date.now() });
     }
     const session = sessions.get(sessionId);
+
+    // Limiter le nombre de messages par session
+    if (session.messages.length >= MAX_MESSAGES_PER_SESSION) {
+      session.messages = session.messages.slice(-20);
+    }
 
     // Ajouter le message utilisateur
     session.messages.push({ role: 'user', content: message });
@@ -450,12 +532,21 @@ app.post('/api/chat', async (req, res) => {
 
       const toolResults = [];
       for (const toolUse of toolUseBlocks) {
-        const result = await executeTool(toolUse.name, toolUse.input);
-        toolResults.push({
-          type: 'tool_result',
-          tool_use_id: toolUse.id,
-          content: JSON.stringify(result),
-        });
+        try {
+          const result = await executeTool(toolUse.name, toolUse.input);
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: JSON.stringify(result),
+          });
+        } catch (toolError) {
+          console.error(`[Tool] ${toolUse.name} échec:`, toolError.message);
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: JSON.stringify({ success: false, error: 'Service temporairement indisponible.' }),
+          });
+        }
       }
 
       // Ajouter l'échange tool au contexte
@@ -487,7 +578,7 @@ app.post('/api/chat', async (req, res) => {
       session_id: sessionId,
     });
   } catch (error) {
-    console.error('[Chat] Erreur:', error);
+    console.error('[Chat] Erreur:', error.message || error);
     res.status(500).json({
       error: "Désolé, une erreur s'est produite. Veuillez réessayer.",
     });
@@ -543,13 +634,15 @@ app.get('/api/camps', async (req, res) => {
 
 function cleanExpiredSessions() {
   const now = Date.now();
-  const maxAge = 2 * 60 * 60 * 1000; // 2 heures
   for (const [id, session] of sessions) {
-    if (now - session.created_at > maxAge) {
+    if (now - session.created_at > SESSION_MAX_AGE) {
       sessions.delete(id);
     }
   }
 }
+
+// Nettoyage périodique toutes les 15 minutes
+setInterval(cleanExpiredSessions, 15 * 60 * 1000);
 
 // ──────────────────────────────────────────────
 // DÉMARRAGE
